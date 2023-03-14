@@ -181,3 +181,231 @@ int conditional(int x, int y, int z) {
 }
 ```
 
+#### 8. isLessOrEqual
+
+这个函数让我们判断$x \le y$，$x = y$很容易判断，因此我们先判断$x = y$。
+
+判断$x < y$的时候，我们仍然使用$x + y < 0$这个条件来判断。
+
+但是要注意，可能会出现$x + y$溢出的情况，从而导致判断错误。
+
+因此，我们首先根据符号进行判断，如果二者符号不同，那么答案显然；否则再利用上式进行判断。
+
+```c
+/* 
+ * isLessOrEqual - if x <= y  then return 1, else return 0 
+ *   Example: isLessOrEqual(4,5) = 1.
+ *   Legal ops: ! ~ & ^ | + << >>
+ *   Max ops: 24
+ *   Rating: 3
+ */
+int isLessOrEqual(int x, int y) {
+	int flagx = (x >> 31 & 1);
+	int flagy = (y >> 31 & 1);
+	int notZero = !!(flagx ^ flagy);
+	int flag = ~notZero + 1;
+	int less = ((x + (~y + 1)) >> 31 & 1);
+	return (!(x ^ y)) | ((flag & flagx) | (~flag & less));
+}
+```
+
+#### 9. logicalNeg
+
+这个函数让我们实现`!`运算符——也就是`x = 0`时返回`1`，否则返回`0`。
+
+因此，我们可以通过判断`x`是否为`0`来实现这个函数，不难发现，只有`0`和其相反数或之后，全部都位为`0`。
+
+所以，我们利用这个条件判断即可。
+
+```c
+/* 
+ * logicalNeg - implement the ! operator, using all of 
+ *              the legal operators except !
+ *   Examples: logicalNeg(3) = 0, logicalNeg(0) = 1
+ *   Legal ops: ~ & ^ | + << >>
+ *   Max ops: 12
+ *   Rating: 4 
+ */
+int logicalNeg(int x) {
+  	return ((x | (~x + 1)) >> 31) + 1;
+}
+```
+
+#### 10. howManyBits
+
+这个函数让我们判断一个数在二进制补码表示下，最少需要多少位才能表示出来。
+
+通过观察给的样例：
+
+12：01100
+
+-5：1011
+
+0：0
+
+-1：1
+
+当`x`为正数时，假设`idx`表示为`1`的最高的位置，答案即`idx + 1`。
+
+当`x`为负数时，我们将`x`取反，假设`idx`表示此时为`1`的最高的位置，答案即`idx + 1`。
+
+因此，我们可以通过找出最高的1的位置来计算答案。
+
+因为不能使用循环，所以我们利用二分查找。
+
+首先，判断高16位是否存在1，如果存在1的话，我们就只需要在高16位上寻找最高位；如果高16位不存在1，那么我们去低16位寻找。就这样一直找下去，直到区间长度变为1停止。
+
+具体实现可以看代码。
+
+```c
+/* howManyBits - return the minimum number of bits required to represent x in
+ *             two's complement
+ *  Examples: howManyBits(12) = 5
+ *            howManyBits(298) = 10
+ *            howManyBits(-5) = 4
+ *            howManyBits(0)  = 1
+ *            howManyBits(-1) = 1
+ *            howManyBits(0x80000000) = 32
+ *  Legal ops: ! ~ & ^ | + << >>
+ *  Max ops: 90
+ *  Rating: 4
+ */
+int howManyBits(int x) {
+	int b16, b8, b4, b2, b1, b0;
+	int sign = x >> 31;
+	x = (sign & ~x) | (~sign & x);
+	b16 = !!(x >> 16) << 4;
+	x = x >> b16;
+	b8 = !!(x >> 8) << 3;
+	x = x >> b8;
+	b4 = !!(x >> 4) << 2;
+	x = x >> b4;
+	b2 = !!(x >> 2) << 1;
+	x = x >> b2;
+	b1 = !!(x >> 1);
+	x = x >> b1;
+	b0 = x;
+  	return b16 + b8 + b4 + b2 + b1 + b0 + 1;
+}
+```
+
+#### 11. floatScale2
+
+从这个函数开始，就都是涉及到浮点数表示了，如果不是很了解，建议仔细阅读一下《深入理解计算机系统》第二章后半部分的内容。
+
+这个函数给了我们一个浮点数表示的数`f`，让我们计算出`2 * f`的浮点数表示。
+
+首先，我们把`f`中的符号位`s`，阶数`exp`，尾数`frac`全都扣出来。
+
+然后，判断一下是否是非规格化的值，也就是判断阶数`exp`是否为0，如果为`0`，我们直接把尾数乘2然后配上符号输出即可。
+
+如果`exp = 255`，也就是为`NaN`或者无穷，我们直接返回`f`。
+
+否则，就把阶数`exp`加1，如果此时`exp`为255，也就是阶码位全为1，此时溢出了，我们返回无穷。
+
+最后，代表没有溢出，我们返回正常的值即可。
+
+```c
+//float
+/* 
+ * floatScale2 - Return bit-level equivalent of expression 2*f for
+ *   floating point argument f.
+ *   Both the argument and result are passed as unsigned int's, but
+ *   they are to be interpreted as the bit-level representation of
+ *   single-precision floating point values.
+ *   When argument is NaN, return argument
+ *   Legal ops: Any integer/unsigned operations incl. ||, &&. also if, while
+ *   Max ops: 30
+ *   Rating: 4
+ */
+unsigned floatScale2(unsigned uf) {
+  	unsigned s = uf & (1 << 31);
+	unsigned exp = (uf & 0x7f800000) >> 23;
+	unsigned frac = uf & (~0xff800000);
+
+	if(exp == 0) return frac << 1 | s;
+	if(exp == 255) return uf;
+	exp ++;
+	if(exp == 255) return 0x7f800000 | s;
+	return s | (exp << 23) | frac;
+}
+```
+
+#### 12. floatFloat2Int
+
+这个函数让我们把一个给定的浮点数`f`通过强制类型转换为`int`。
+
+`int`的表示范围要比单精度浮点数小很多$[-2^{31}, 2^{31} - 1]$，所以我们可能会出现精度损失的情况。
+
+首先，还是先把符号位`s`，阶码`exp`，尾数`frac`都抠出来。
+
+我们计算一下真实的阶数，$E = exp - 127$。
+
+如果`f`是`NaN`，或者$E > 31$，根据题意，我们应该直接返回`0x80000000u`。
+
+如果$E < 0$，代表`f`只有小数部分，我们直接返回`0`即可。
+
+我们算出真实的尾数$M = frac | (1 << 23)$。
+
+如果$E > 23$我们就需要在后面补$E - 23$个0，否则，我们需要舍去$23 - E$位。
+
+最后，搭配上符号位输出即可。
+
+```c
+/* 
+ * floatFloat2Int - Return bit-level equivalent of expression (int) f
+ *   for floating point argument f.
+ *   Argument is passed as unsigned int, but
+ *   it is to be interpreted as the bit-level representation of a
+ *   single-precision floating point value.
+ *   Anything out of range (including NaN and infinity) should return
+ *   0x80000000u.
+ *   Legal ops: Any integer/unsigned operations incl. ||, &&. also if, while
+ *   Max ops: 30
+ *   Rating: 4
+ */
+int floatFloat2Int(unsigned uf) {
+   unsigned s = uf & (1 << 31);
+   int exp = (uf & 0x7f800000) >> 23;
+   unsigned frac = uf & (~0xff800000);
+
+   int E = exp - 127;
+   if(exp == 255 || E > 31) return 0x80000000u;
+   if(E < 0) return 0;
+   unsigned M = frac | (1 << 23);
+   int V = (E > 23 ? M << (E - 23) : M >> (23 - E));
+   if(s) V *= -1;
+   return V;
+}
+```
+
+#### 13. floatPower2
+
+这个函数让我们算出$2 ^ x$的单精度浮点数表示并返回。
+
+`x`只能位于$[-149, 128]$之间。
+
+根据不同情况输出即可，要考虑到尾数也可以额外表示浮点数。
+
+```c
+/* 
+ * floatPower2 - Return bit-level equivalent of the expression 2.0^x
+ *   (2.0 raised to the power x) for any 32-bit integer x.
+ *
+ *   The unsigned value that is returned should have the identical bit
+ *   representation as the single-precision floating-point number 2.0^x.
+ *   If the result is too small to be represented as a denorm, return
+ *   0. If too large, return +INF.
+ * 
+ *   Legal ops: Any integer/unsigned operations incl. ||, &&. Also if, while 
+ *   Max ops: 30 
+ *   Rating: 4
+ */
+unsigned floatPower2(int x) {
+   if(x >= 128) return 0x7f800000;
+   if(x >= -126) return (x + 127) << 23;
+   if(x >= -149) return 1 << (x + 149);
+   return 0;
+}
+```
+

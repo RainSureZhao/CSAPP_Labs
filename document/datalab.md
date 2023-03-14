@@ -20,9 +20,9 @@ make btest
 
 这个函数要求我们只用`~`和`&`两个运算符来实现异或运算。
 我们可以将异或运算写出来：
-$a \oplus b = (a \& \neg b) | (\neg a \& b)$
+$a \oplus b = (a \land \lnot b) \lor (\lnot a \land b)$
 利用德摩根律：
-$a \oplus b = \neg (\neg (a \& \neg b) \& \neg (\neg a \& b))$
+$a \oplus b = \neg (\neg (a \land \lnot b) \& \lnot (\lnot a \land b))$
 现在就只剩下`~`和`&`运算符了，并且数目没有超过14个，该公式也可以进一步化简。
 
 ```c
